@@ -487,10 +487,10 @@
     <div class="bib-wrap" id="bibBox">
       <button class="copy-btn" onclick="copyBib()">📋 Copy</button>
 <span class="bib-key">@article</span>{zhu2026omnirag,<br/>
-&nbsp;&nbsp;<span class="bib-field">title</span>   = {<span class="bib-val">OmniRAG-Agent: Agentic Omnimodal Reasoning for Low-Resource Long Audio-Video Question Answering</span>},<br/>
-&nbsp;&nbsp;<span class="bib-field">author</span>  = {<span class="bib-val">Zhu, Yifan and Mu, Xinyu and Feng, Tao and Ou, Zhonghong and Gong, Yuning and Luo, Haoran</span>},<br/>
-&nbsp;&nbsp;<span class="bib-field">journal</span> = {<span class="bib-val">arXiv preprint arXiv:2602.03707</span>},<br/>
-&nbsp;&nbsp;<span class="bib-field">year</span>    = {<span class="bib-val">2026</span>}<br/>
+&nbsp;&nbsp;<span class="bib-field">title</span>={<span class="bib-val">OmniRAG-Agent: Agentic Omnimodal Reasoning for Low-Resource Long Audio-Video Question Answering</span>},<br/>
+&nbsp;&nbsp;<span class="bib-field">author</span>={<span class="bib-val">Zhu, Yifan and Mu, Xinyu and Feng, Tao and Ou, Zhonghong and Gong, Yuning and Luo, Haoran</span>},<br/>
+&nbsp;&nbsp;<span class="bib-field">journal</span>={<span class="bib-val">arXiv preprint arXiv:2602.03707</span>},<br/>
+&nbsp;&nbsp;<span class="bib-field">year</span>={<span class="bib-val">2026</span>}<br/>
 }
     </div>
   </div>
@@ -503,7 +503,7 @@
 
 <script>
 function copyBib() {
-  const text = `@article{zhu2026omnirag,\n  title   = {OmniRAG-Agent: Agentic Omnimodal Reasoning for Low-Resource Long Audio-Video Question Answering},\n  author  = {Zhu, Yifan and Mu, Xinyu and Feng, Tao and Ou, Zhonghong and Gong, Yuning and Luo, Haoran},\n  journal = {arXiv preprint arXiv:2602.03707},\n  year    = {2026}\n}`;
+  const text = `@article{zhu2026omnirag,\n  title={OmniRAG-Agent: Agentic Omnimodal Reasoning for Low-Resource Long Audio-Video Question Answering},\n  author={Zhu, Yifan and Mu, Xinyu and Feng, Tao and Ou, Zhonghong and Gong, Yuning and Luo, Haoran},\n  journal={arXiv preprint arXiv:2602.03707},\n  year={2026}\n}`;
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelector('.copy-btn');
     btn.textContent = '✅ Copied!';
