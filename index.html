@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OmniRAG-Agent: Agentic Omnimodal Reasoning for Low-Resource Long Audio-Video QA</title>
+  <style>
+    /* ── Reset ──────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    /* ── Base ───────────────────────────────── */
+    body {
+      background: #ffffff;
+      color: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    /* ── Layout ─────────────────────────────── */
+    .page { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
+    section { padding: 60px 0; }
+    section + section { border-top: 1px solid #e5e7eb; }
+
+    /* ── Typography ─────────────────────────── */
+    h1 { font-size: clamp(1.7rem, 3.5vw, 2.5rem); font-weight: 800; line-height: 1.2; text-align: center; color: #111; }
+    h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 18px; color: #111; }
+    h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; color: #111; }
+    p  { color: #374151; }
+
+    /* ── Nav ────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(255,255,255,.92); backdrop-filter: blur(10px);
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 0;
+    }
+    nav .inner {
+      max-width: 1060px; margin: 0 auto; padding: 0 28px;
+      display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+    }
+    nav .brand { font-weight: 800; font-size: .95rem; color: #111; white-space: nowrap; }
+    nav .brand span { color: #7c3aed; }
+    nav .navlinks { display: flex; gap: 20px; flex-wrap: wrap; }
+    nav .navlinks a { font-size: .83rem; color: #6b7280; text-decoration: none; transition: color .15s; }
+    nav .navlinks a:hover { color: #111; }
+
+    /* ── Hero ───────────────────────────────── */
+    #hero { padding: 72px 0 56px; text-align: center; }
+    #hero h1 { max-width: 820px; margin: 0 auto 28px; }
+
+    /* Buttons */
+    .btn-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 0; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 22px; border-radius: 8px; font-size: .875rem; font-weight: 600;
+      text-decoration: none; transition: opacity .15s, transform .15s; white-space: nowrap;
+      border: none; cursor: pointer;
+    }
+    .btn:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-green  { background: #16a34a; color: #fff; }
+    .btn-red    { background: #dc2626; color: #fff; }
+    .btn-dark   { background: #1f2937; color: #fff; }
+    .btn-orange { background: #ea580c; color: #fff; }
+    .btn-purple { background: #7c3aed; color: #fff; }
+
+    /* ── Figure block ───────────────────────── */
+    .fig-block {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 28px 28px 20px;
+      text-align: center;
+    }
+    .fig-block img {
+      max-width: 100%; height: auto; border-radius: 6px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    }
+    .fig-caption {
+      margin-top: 14px; font-size: .8rem; color: #6b7280;
+      line-height: 1.5; font-style: italic; max-width: 880px; margin-left: auto; margin-right: auto;
+    }
+    .fig-caption strong { font-style: normal; color: #374151; }
+
+    /* ── Abstract ───────────────────────────── */
+    #abstract .abs-body {
+      max-width: 860px; margin: 0 auto;
+      font-size: .975rem; color: #374151; line-height: 1.85;
+    }
+    #abstract .abs-body strong { color: #1a1a1a; }
+
+    /* ── Contributions ──────────────────────── */
+    .contrib-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+    .contrib-card {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 24px 20px; transition: border-color .2s, box-shadow .2s;
+    }
+    .contrib-card:hover { border-color: #7c3aed; box-shadow: 0 4px 16px rgba(124,58,237,.08); }
+    .contrib-icon { font-size: 1.6rem; margin-bottom: 12px; }
+    .contrib-card p { font-size: .85rem; color: #4b5563; }
+
+    /* ── Method ─────────────────────────────── */
+    .method-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; margin-top: 32px; }
+    @media (max-width: 680px) { .method-grid { grid-template-columns: 1fr; } }
+    .method-card {
+      border-left: 3px solid #7c3aed; padding: 16px 18px;
+      background: #faf5ff; border-radius: 0 8px 8px 0;
+    }
+    .method-card p { font-size: .84rem; color: #4b5563; }
+
+    /* ── Headline stats ─────────────────────── */
+    .stats-strip {
+      display: flex; justify-content: center; gap: 48px; flex-wrap: wrap;
+      background: #f8fafc; border-radius: 12px; padding: 32px 24px; margin-bottom: 48px;
+      border: 1px solid #e2e8f0;
+    }
+    .stat-item { text-align: center; }
+    .stat-val { font-size: 2.2rem; font-weight: 800; color: #7c3aed; line-height: 1; }
+    .stat-lab { font-size: .75rem; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+
+    /* ── Result Tables ──────────────────────── */
+    .table-block { margin-bottom: 52px; }
+    .table-title {
+      font-size: 1rem; font-weight: 700; color: #111;
+      margin-bottom: 4px;
+    }
+    .table-sub { font-size: .82rem; color: #6b7280; margin-bottom: 14px; }
+    .tbl-wrap { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 10px; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: .8rem;
+      white-space: nowrap;
+    }
+    thead th {
+      background: #f1f5f9; color: #374151; font-weight: 700;
+      padding: 9px 10px; text-align: center; font-size: .75rem;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    thead th:first-child { text-align: left; padding-left: 14px; min-width: 190px; }
+    thead th:nth-child(2) { min-width: 64px; }
+    tbody tr td {
+      padding: 7px 10px; text-align: center;
+      border-bottom: 1px solid #f1f5f9; color: #374151;
+    }
+    tbody tr td:first-child { text-align: left; padding-left: 14px; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #faf5ff; }
+
+    /* group header */
+    .tr-group td {
+      background: #f1f5f9; font-weight: 700; color: #374151;
+      font-size: .75rem; text-transform: uppercase; letter-spacing: .05em;
+      padding: 6px 14px; text-align: center; border-bottom: 1px solid #e2e8f0;
+    }
+    /* base model row */
+    .tr-base td { background: #fafafa; font-weight: 600; color: #111; }
+    /* variant rows – indented method name */
+    .tr-variant td:first-child { padding-left: 28px; color: #4b5563; }
+    /* best row */
+    .tr-best td { background: #fdf4ff; font-weight: 700; }
+    .tr-best td:first-child { padding-left: 28px; color: #7c3aed; }
+    .tr-best .avg-cell { color: #7c3aed; }
+    /* avg column highlight */
+    td.avg { font-weight: 700; color: #111; }
+
+    /* ── Analysis figures ───────────────────── */
+    .fig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 700px) { .fig-row { grid-template-columns: 1fr; } }
+    .fig-row .fig-block { text-align: center; }
+
+    /* ── Citation ───────────────────────────── */
+    .bib-wrap {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 24px 28px; max-width: 760px; margin: 0 auto;
+      font-family: 'Consolas', 'Fira Code', monospace; font-size: .8rem;
+      line-height: 1.8; color: #374151; position: relative;
+    }
+    .bib-key   { color: #7c3aed; font-weight: 700; }
+    .bib-field { color: #1d4ed8; }
+    .bib-val   { color: #15803d; }
+    .copy-btn {
+      position: absolute; top: 14px; right: 14px;
+      background: #fff; border: 1px solid #e2e8f0; color: #374151;
+      padding: 4px 12px; border-radius: 6px; font-size: .72rem; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .copy-btn:hover { background: #f1f5f9; }
+
+    /* ── Footer ─────────────────────────────── */
+    footer {
+      background: #f8fafc; border-top: 1px solid #e2e8f0;
+      padding: 28px; text-align: center;
+      font-size: .8rem; color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ────────────────────────────────────────────────── -->
+<nav>
+  <div class="inner">
+    <span class="brand">Omni<span>RAG</span>-Agent</span>
+    <div class="navlinks">
+      <a href="#abstract">Abstract</a>
+      <a href="#method">Method</a>
+      <a href="#results">Results</a>
+      <a href="#analysis">Analysis</a>
+      <a href="#citation">Citation</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ───────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="page">
+    <h1>OmniRAG-Agent: Agentic Omnimodal Reasoning for<br/>Low-Resource Long Audio-Video Question Answering</h1>
+    <br/>
+    <p style="text-align:center;color:#4b5563;font-size:.92rem;margin-bottom:28px;">
+      Yifan Zhu &nbsp;·&nbsp; Xinyu Mu &nbsp;·&nbsp; Tao Feng &nbsp;·&nbsp;
+      Zhonghong Ou &nbsp;·&nbsp; Yuning Gong &nbsp;·&nbsp; Haoran Luo
+    </p>
+    <div class="btn-row">
+      <a class="btn btn-green" href="#results">▶ Try It Now</a>
+      <a class="btn btn-red"   href="https://arxiv.org/abs/2602.03707" target="_blank">📄 Paper</a>
+      <a class="btn btn-dark"  href="#" target="_blank">&lt;/&gt; Code</a>
+      <a class="btn btn-orange" href="#" target="_blank">🤗 Model</a>
+      <a class="btn btn-purple" href="#" target="_blank">📊 Dataset</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Main Figure ─────────────────────────────────────────── -->
+<section style="padding:0 0 60px;">
+  <div class="page">
+    <div class="fig-block">
+      <img src="figs/Figure_3_01.png" alt="OmniRAG-Agent Framework Overview"/>
+      <p class="fig-caption">
+        <strong>Figure 1: Overview of the OmniRAG-Agent framework.</strong>
+        The agent processes long video and audio through downsampling, builds a Multi-Modal Retrieval Bank,
+        and interacts with an OmniLLM over multiple turns — issuing <em>Think</em> and <em>Query</em> actions
+        to retrieve relevant image/audio clips — before synthesizing evidence into a final answer.
+        Training uses Format Reward and Answer Reward signals.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Abstract ───────────────────────────────────────────── -->
+<section id="abstract">
+  <div class="page">
+    <h2>Abstract</h2>
+    <div class="abs-body">
+      Long-horizon omnimodal question answering answers questions by reasoning over
+      <strong>text, images, audio, and video</strong>. Despite recent progress on OmniLLMs,
+      low-resource long audio-video QA still suffers from <strong>costly dense encoding</strong>,
+      <strong>weak fine-grained retrieval</strong>, <strong>limited proactive planning</strong>,
+      and no clear end-to-end optimization. To address these issues, we propose
+      <strong>OmniRAG-Agent</strong>, an agentic omnimodal QA method for budgeted long
+      audio-video reasoning. It builds an <strong>image–audio retrieval-augmented generation</strong>
+      module that lets an OmniLLM fetch short, relevant frames and audio snippets from external banks.
+      Moreover, it uses an <strong>agent loop</strong> that plans, calls tools across turns, and merges
+      retrieved evidence to answer complex queries. Furthermore, we apply
+      <strong>group relative policy optimization (GRPO)</strong> to jointly improve tool use and answer
+      quality over time. Experiments on <strong>OmniVideoBench</strong>, <strong>WorldSense</strong>,
+      and <strong>Daily-Omni</strong> show that OmniRAG-Agent consistently outperforms prior methods
+      under low-resource settings and achieves strong results, with ablations validating each component.
+    </div>
+  </div>
+</section>
+
+<!-- ── Key Contributions ───────────────────────────────────── -->
+<section id="contributions">
+  <div class="page">
+    <h2>Key Contributions</h2>
+    <div class="contrib-grid">
+      <div class="contrib-card">
+        <div class="contrib-icon">🖼️</div>
+        <h3>Image–Audio RAG Module</h3>
+        <p>Per-video FAISS indices built from CLIP-encoded keyframes and Whisper ASR transcripts, enabling fine-grained retrieval of short, relevant clips at inference time without dense video encoding.</p>
+      </div>
+      <div class="contrib-card">
+        <div class="contrib-icon">🔄</div>
+        <h3>Multi-Turn Agent Loop</h3>
+        <p>An OmniLLM iteratively issues <em>Think</em> and <em>Query</em> actions, incorporating retrieved image/audio responses into an interaction history, and synthesizes evidence into a grounded final answer.</p>
+      </div>
+      <div class="contrib-card">
+        <div class="contrib-icon">🎯</div>
+        <h3>GRPO-Based RL Training</h3>
+        <p>End-to-end optimization with Group Relative Policy Optimization using Format Reward and Answer Reward, jointly improving both retrieval tool-use quality and final answer correctness.</p>
+      </div>
+      <div class="contrib-card">
+        <div class="contrib-icon">📊</div>
+        <h3>Strong Benchmark Results</h3>
+        <p>Consistently outperforms closed- and open-source baselines across OmniVideoBench, WorldSense, and Daily-Omni under low-resource (3B / 7B parameter) settings, with comprehensive ablation study.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Method ──────────────────────────────────────────────── -->
+<section id="method">
+  <div class="page">
+    <h2>Method Overview</h2>
+    <p style="max-width:820px;color:#4b5563;font-size:.95rem;">
+      OmniRAG-Agent combines a lightweight retrieval pipeline with an agentic reasoning loop trained
+      via reinforcement learning. The three core components work together to handle long videos within
+      a strict budget constraint.
+    </p>
+    <div class="method-grid">
+      <div class="method-card">
+        <h3>Retrieval Bank Construction</h3>
+        <p>Videos are downsampled to at most 30-minute clips; keyframes and 5-second audio segments are extracted, embedded with CLIP and Whisper respectively, and stored in per-video FAISS indices served via a FastAPI endpoint.</p>
+      </div>
+      <div class="method-card">
+        <h3>OmniLLM Agent Interaction</h3>
+        <p>At each turn the agent emits structured <code>&lt;think&gt;</code> reasoning and optionally a <code>&lt;query&gt;</code> call (image or audio). Retrieved clips are appended to the interaction history before the next turn, up to 20 turns total.</p>
+      </div>
+      <div class="method-card">
+        <h3>GRPO Reward Signals</h3>
+        <p>Two rewards guide training: <strong>Format Reward</strong> checks that structured tags (<code>&lt;think&gt;…&lt;/think&gt;</code>) are present, and <strong>Answer Reward</strong> matches the final answer against the ground truth option, with group-relative advantage estimation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Results ─────────────────────────────────────────────── -->
+<section id="results">
+  <div class="page">
+    <h2>Experimental Results</h2>
+    <p style="color:#4b5563;font-size:.92rem;margin-bottom:32px;">
+      Evaluated on three benchmarks: OmniVideoBench (audio-visual QA), WorldSense (domain-knowledge video QA),
+      and Daily-Omni (daily-life audio-visual reasoning). <strong>Bold</strong> indicates the best average
+      performance among open-source methods.
+    </p>
+
+    <!-- Headline stats -->
+    <div class="stats-strip">
+      <div class="stat-item"><div class="stat-val">3</div><div class="stat-lab">Benchmarks</div></div>
+      <div class="stat-item"><div class="stat-val">29.69%</div><div class="stat-lab">OmniVideoBench (7B)</div></div>
+      <div class="stat-item"><div class="stat-val">38.28%</div><div class="stat-lab">WorldSense (7B)</div></div>
+      <div class="stat-item"><div class="stat-val">44.92%</div><div class="stat-lab">Daily-Omni (7B)</div></div>
+    </div>
+
+    <!-- ── Table 1: OmniVideoBench ── -->
+    <div class="table-block">
+      <div class="table-title">Table 1: OmniVideoBench</div>
+      <div class="table-sub">Comparison of baselines on OmniVideoBench. <strong>Bold</strong> = best average performance.</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th><th>Mod.</th>
+              <th>Compare<br/>Attr</th><th>AudioBg</th><th>Reasoning</th>
+              <th>Logic<br/>Ref</th><th>Ego<br/>Spatial</th><th>Perception</th>
+              <th>TimeTemp</th><th>Text<br/>Sense</th><th>Avg</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Closed-source -->
+            <tr class="tr-group"><td colspan="11">Closed-source Models</td></tr>
+            <tr class="tr-base"><td>GPT-5.1</td><td>V</td><td>22.22</td><td>27.27</td><td>20.83</td><td>26.09</td><td>29.17</td><td>19.67</td><td>4.00</td><td>40.62</td><td class="avg">24.51</td></tr>
+            <tr class="tr-base"><td>Gemini 2.0-Flash</td><td>A+V</td><td>22.22</td><td>36.36</td><td>25.00</td><td>30.43</td><td>26.76</td><td>29.51</td><td>16.00</td><td>31.25</td><td class="avg">27.34</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>44.44</td><td>36.36</td><td>12.50</td><td>43.48</td><td>28.17</td><td>24.59</td><td>20.00</td><td>46.88</td><td class="avg">29.69</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>22.22</td><td>36.36</td><td>16.67</td><td>34.78</td><td>29.58</td><td>29.51</td><td>24.00</td><td>46.88</td><td class="avg">30.47</td></tr>
+            <tr class="tr-base"><td>Gemini 2.5-Flash</td><td>A+V</td><td>22.22</td><td>18.18</td><td>25.00</td><td>34.78</td><td>35.21</td><td>31.15</td><td>4.00</td><td>31.25</td><td class="avg">28.52</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>11.11</td><td>36.36</td><td>20.83</td><td>30.43</td><td>33.80</td><td>36.07</td><td>12.00</td><td>53.12</td><td class="avg">32.42</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>44.44</td><td>27.27</td><td>29.17</td><td>30.43</td><td>33.80</td><td>34.43</td><td>28.00</td><td>53.12</td><td class="avg">35.16</td></tr>
+            <!-- Open-source -->
+            <tr class="tr-group"><td colspan="11">Open-source Models</td></tr>
+            <tr class="tr-base"><td>Qwen2.5-Omni-3B</td><td>A+V</td><td>22.22</td><td>9.09</td><td>25.00</td><td>17.39</td><td>25.35</td><td>18.03</td><td>28.00</td><td>31.25</td><td class="avg">23.05</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>33.33</td><td>27.27</td><td>33.33</td><td>26.09</td><td>26.76</td><td>16.39</td><td>24.00</td><td>25.00</td><td class="avg">24.61</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>22.22</td><td>26.36</td><td>37.50</td><td>26.09</td><td>25.35</td><td>24.59</td><td>24.00</td><td>28.12</td><td class="avg">26.95</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent + RL</td><td>A+V</td><td>33.33</td><td>27.27</td><td>33.33</td><td>21.74</td><td>26.76</td><td>21.31</td><td>36.00</td><td>31.25</td><td class="avg">27.34</td></tr>
+            <tr class="tr-base"><td>Qwen2.5-Omni-7B</td><td>A+V</td><td>22.22</td><td>18.18</td><td>25.00</td><td>26.09</td><td>23.94</td><td>27.87</td><td>16.00</td><td>31.25</td><td class="avg">25.00</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>22.22</td><td>27.27</td><td>12.50</td><td>39.13</td><td>22.54</td><td>24.59</td><td>40.00</td><td>40.62</td><td class="avg">27.73</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>44.44</td><td>45.45</td><td>29.17</td><td>26.09</td><td>28.17</td><td>22.95</td><td>24.00</td><td>34.52</td><td class="avg">28.52</td></tr>
+            <tr class="tr-best"><td>+ RAG + Agent + RL</td><td>A+V</td><td>33.33</td><td>27.27</td><td>12.50</td><td>26.09</td><td>32.39</td><td>34.43</td><td>20.00</td><td>37.50</td><td class="avg avg-cell">29.69</td></tr>
+            <tr class="tr-base"><td>Qwen3-Omni-30B</td><td>A+V</td><td>33.33</td><td>18.18</td><td>12.50</td><td>26.09</td><td>32.39</td><td>32.79</td><td>12.00</td><td>34.38</td><td class="avg">27.73</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>11.11</td><td>36.36</td><td>8.33</td><td>26.09</td><td>38.03</td><td>26.23</td><td>20.00</td><td>34.38</td><td class="avg">28.12</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>33.33</td><td>36.36</td><td>16.67</td><td>21.74</td><td>38.03</td><td>27.87</td><td>28.00</td><td>25.00</td><td class="avg">29.30</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Table 2: WorldSense ── -->
+    <div class="table-block">
+      <div class="table-title">Table 2: WorldSense</div>
+      <div class="table-sub">Comparison of baselines on WorldSense. <strong>Bold</strong> = best average performance.</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th><th>Mod.</th>
+              <th>Tech &amp;<br/>Science</th><th>Culture &amp;<br/>Politics</th><th>Daily<br/>Life</th>
+              <th>Film &amp;<br/>TV</th><th>Perfor-<br/>mance</th><th>Games</th>
+              <th>Sports</th><th>Music</th><th>Avg</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="tr-group"><td colspan="11">Closed-source Models</td></tr>
+            <tr class="tr-base"><td>Gemini 2.5-Flash</td><td>A+V</td><td>47.37</td><td>23.08</td><td>27.78</td><td>40.00</td><td>27.27</td><td>29.41</td><td>25.00</td><td>43.24</td><td class="avg">33.59</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>55.26</td><td>38.46</td><td>29.63</td><td>36.67</td><td>31.82</td><td>41.18</td><td>21.88</td><td>45.95</td><td class="avg">37.50</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>57.89</td><td>30.77</td><td>42.59</td><td>33.33</td><td>31.82</td><td>41.18</td><td>25.00</td><td>45.95</td><td class="avg">39.84</td></tr>
+            <tr class="tr-group"><td colspan="11">Open-source Models</td></tr>
+            <tr class="tr-base"><td>Qwen2.5-Omni-3B</td><td>A+V</td><td>34.21</td><td>42.32</td><td>27.78</td><td>30.00</td><td>13.64</td><td>29.41</td><td>15.62</td><td>40.54</td><td class="avg">29.69</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>34.21</td><td>26.92</td><td>25.93</td><td>30.00</td><td>31.82</td><td>41.18</td><td>31.25</td><td>35.14</td><td class="avg">31.25</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>36.84</td><td>26.92</td><td>31.48</td><td>26.67</td><td>27.27</td><td>29.41</td><td>40.62</td><td>45.95</td><td class="avg">33.98</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent + RL</td><td>A+V</td><td>36.84</td><td>30.77</td><td>40.74</td><td>40.00</td><td>36.36</td><td>35.29</td><td>15.62</td><td>51.35</td><td class="avg">36.71</td></tr>
+            <tr class="tr-base"><td>Qwen2.5-Omni-7B</td><td>A+V</td><td>34.21</td><td>30.77</td><td>29.63</td><td>33.33</td><td>22.73</td><td>29.41</td><td>18.75</td><td>40.54</td><td class="avg">30.47</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>21.05</td><td>42.31</td><td>37.04</td><td>40.00</td><td>13.64</td><td>29.41</td><td>25.00</td><td>45.95</td><td class="avg">32.81</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>31.58</td><td>50.00</td><td>25.93</td><td>30.00</td><td>50.00</td><td>35.29</td><td>21.88</td><td>43.24</td><td class="avg">34.38</td></tr>
+            <tr class="tr-best"><td>+ RAG + Agent + RL</td><td>A+V</td><td>44.74</td><td>23.08</td><td>40.74</td><td>40.00</td><td>40.91</td><td>41.18</td><td>25.00</td><td>45.95</td><td class="avg avg-cell">38.28</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Table 3: Daily-Omni ── -->
+    <div class="table-block">
+      <div class="table-title">Table 3: Daily-Omni</div>
+      <div class="table-sub">Comparison of baselines on Daily-Omni. <strong>Bold</strong> = best average performance.</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th><th>Mod.</th>
+              <th>AV Event<br/>Alignment</th><th>Comparative</th><th>Context<br/>Understand.</th>
+              <th>Event<br/>Sequence</th><th>Inference</th><th>Reasoning</th><th>Avg</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="tr-group"><td colspan="9">Closed-source Models</td></tr>
+            <tr class="tr-base"><td>Gemini 2.5-Flash</td><td>A+V</td><td>34.63</td><td>34.38</td><td>50.00</td><td>37.10</td><td>56.82</td><td>51.11</td><td class="avg">44.53</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>38.46</td><td>39.39</td><td>45.65</td><td>41.94</td><td>54.55</td><td>55.56</td><td class="avg">46.48</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>26.92</td><td>34.38</td><td>46.65</td><td>53.23</td><td>59.09</td><td>60.00</td><td class="avg">48.83</td></tr>
+            <tr class="tr-group"><td colspan="9">Open-source Models</td></tr>
+            <tr class="tr-base"><td>Qwen2.5-Omni-3B</td><td>A+V</td><td>39.22</td><td>21.43</td><td>41.46</td><td>25.76</td><td>33.33</td><td>29.73</td><td class="avg">32.03</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>27.45</td><td>28.57</td><td>60.98</td><td>22.73</td><td>48.48</td><td>37.84</td><td class="avg">35.94</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>37.25</td><td>32.14</td><td>41.46</td><td>25.76</td><td>42.42</td><td>51.35</td><td class="avg">37.11</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent + RL</td><td>A+V</td><td>39.22</td><td>28.57</td><td>41.46</td><td>40.54</td><td>36.36</td><td>51.35</td><td class="avg">40.09</td></tr>
+            <tr class="tr-base"><td>Qwen2.5-Omni-7B</td><td>A+V</td><td>29.41</td><td>28.57</td><td>41.46</td><td>51.52</td><td>21.21</td><td>32.43</td><td class="avg">36.33</td></tr>
+            <tr class="tr-variant"><td>+ RAG</td><td>A+V</td><td>37.25</td><td>35.71</td><td>46.34</td><td>33.33</td><td>42.42</td><td>48.65</td><td class="avg">39.84</td></tr>
+            <tr class="tr-variant"><td>+ RAG + Agent</td><td>A+V</td><td>45.10</td><td>39.29</td><td>56.10</td><td>33.33</td><td>48.48</td><td>35.14</td><td class="avg">42.19</td></tr>
+            <tr class="tr-best"><td>+ RAG + Agent + RL</td><td>A+V</td><td>27.45</td><td>32.14</td><td>51.22</td><td>59.09</td><td>45.45</td><td>45.95</td><td class="avg avg-cell">44.92</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Analysis ─────────────────────────────────────────────── -->
+<section id="analysis">
+  <div class="page">
+    <h2>Generalization &amp; Efficiency Analysis</h2>
+    <p style="color:#4b5563;font-size:.92rem;margin-bottom:32px;">
+      Ablation studies examining the effect of retrieval budget (number of retrieved clips)
+      and per-category performance across different model backbones.
+    </p>
+    <div class="fig-row" style="margin-bottom:32px;">
+      <div class="fig-block" style="grid-column:1/-1;">
+        <img src="figs/buget_01.png" alt="Budget and per-type analysis"/>
+        <p class="fig-caption">
+          <strong>Figure 2: Retrieval budget analysis.</strong>
+          (a–b) Accuracy vs. number of retrieved image/audio clips for Qwen-Omni-7B and Qwen-Omni-7B+GRPO.
+          (c–e) Per-category dot-plot comparisons showing improvements from +RAG+Agent+RL across all question types on OmniVideoBench.
+        </p>
+      </div>
+    </div>
+    <div class="fig-block">
+      <img src="figs/different_models_01.png" alt="Per-model radar chart comparison"/>
+      <p class="fig-caption">
+        <strong>Figure 3: Per-model radar chart comparison on OmniVideoBench.</strong>
+        Radar charts for (a) Gemini 2.0-Flash, (b) Gemini 2.5-Flash, (c) Qwen2.5-Omni-3B,
+        (d) Qwen2.5-Omni-7B, and (e) Qwen3-Omni-30B, comparing Baseline vs. RAG+Agent (and +RL for open-source models)
+        across all eight question categories.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Citation ────────────────────────────────────────────── -->
+<section id="citation">
+  <div class="page">
+    <h2 style="text-align:center;margin-bottom:8px;">Citation</h2>
+    <p style="text-align:center;color:#6b7280;font-size:.88rem;margin-bottom:24px;">If you find this work helpful, please cite:</p>
+    <div class="bib-wrap" id="bibBox">
+      <button class="copy-btn" onclick="copyBib()">📋 Copy</button>
+<span class="bib-key">@article</span>{zhu2026omnirag,<br/>
+&nbsp;&nbsp;<span class="bib-field">title</span>   = {<span class="bib-val">OmniRAG-Agent: Agentic Omnimodal Reasoning for Low-Resource Long Audio-Video Question Answering</span>},<br/>
+&nbsp;&nbsp;<span class="bib-field">author</span>  = {<span class="bib-val">Zhu, Yifan and Mu, Xinyu and Feng, Tao and Ou, Zhonghong and Gong, Yuning and Luo, Haoran</span>},<br/>
+&nbsp;&nbsp;<span class="bib-field">journal</span> = {<span class="bib-val">arXiv preprint arXiv:2602.03707</span>},<br/>
+&nbsp;&nbsp;<span class="bib-field">year</span>    = {<span class="bib-val">2026</span>}<br/>
+}
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ──────────────────────────────────────────────── -->
+<footer>
+  OmniRAG-Agent · arXiv:2602.03707 · 2026
+</footer>
+
+<script>
+function copyBib() {
+  const text = `@article{zhu2026omnirag,\n  title   = {OmniRAG-Agent: Agentic Omnimodal Reasoning for Low-Resource Long Audio-Video Question Answering},\n  author  = {Zhu, Yifan and Mu, Xinyu and Feng, Tao and Ou, Zhonghong and Gong, Yuning and Luo, Haoran},\n  journal = {arXiv preprint arXiv:2602.03707},\n  year    = {2026}\n}`;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+  });
+}
+</script>
+</body>
+</html>
