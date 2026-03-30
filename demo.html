@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OmniRAG-Agent — Live Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: #f8fafc;
+      color: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: #fff; border-bottom: 1px solid #e5e7eb;
+      padding: 10px 28px; display: flex; align-items: center;
+      gap: 16px; position: sticky; top: 0; z-index: 50;
+    }
+    nav a.back { color: #6b7280; font-size: .82rem; text-decoration: none; }
+    nav a.back:hover { color: #111; }
+    nav .sep { color: #d1d5db; }
+    nav .title { font-weight: 700; font-size: .92rem; color: #7c3aed; }
+    nav .badge {
+      margin-left: auto; background: #fef3c7; color: #92400e;
+      border: 1px solid #fcd34d; padding: 3px 10px; border-radius: 999px;
+      font-size: .72rem; font-weight: 700;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px 20px 60px;
+      align-items: start;
+    }
+    @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+
+    /* ── Sidebar ── */
+    .sidebar { position: sticky; top: 56px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* Video card */
+    .video-card {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      overflow: hidden;
+    }
+    .video-player {
+      background: #0f172a; position: relative; aspect-ratio: 16/9;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px;
+    }
+    .video-player .play-btn {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(124,58,237,.85); display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; color: #fff; cursor: pointer;
+      box-shadow: 0 0 20px rgba(124,58,237,.5);
+    }
+    .video-player .vid-name { color: #94a3b8; font-size: .72rem; font-family: monospace; }
+    .video-player .badges {
+      position: absolute; top: 8px; left: 8px; display: flex; gap: 5px;
+    }
+    .vid-badge {
+      background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,.15); color: #e2e8f0;
+      padding: 2px 7px; border-radius: 4px; font-size: .66rem; font-weight: 600;
+    }
+    .vid-badge.av { background: rgba(124,58,237,.4); border-color: rgba(124,58,237,.5); color: #c4b5fd; }
+    .video-card .meta {
+      padding: 12px 14px; display: flex; flex-direction: column; gap: 5px;
+    }
+    .meta-row { display: flex; justify-content: space-between; font-size: .76rem; }
+    .meta-row .k { color: #6b7280; }
+    .meta-row .v { color: #111; font-weight: 600; font-family: monospace; }
+
+    /* Question card */
+    .question-card {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 16px;
+    }
+    .qcard-head {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .qtype-tag {
+      background: #ede9fe; color: #6d28d9; border-radius: 4px;
+      padding: 2px 8px; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .question-text { font-size: .85rem; color: #111; font-weight: 600; line-height: 1.55; margin-bottom: 12px; }
+    .options { display: flex; flex-direction: column; gap: 7px; }
+    .opt {
+      display: flex; gap: 9px; align-items: flex-start;
+      padding: 8px 10px; border-radius: 8px; border: 1px solid #e5e7eb;
+      font-size: .79rem; cursor: default; transition: border-color .2s, background .2s;
+    }
+    .opt .opt-key {
+      width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+      background: #f1f5f9; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .72rem; color: #374151;
+    }
+    .opt.correct { background: #f0fdf4; border-color: #86efac; }
+    .opt.correct .opt-key { background: #22c55e; color: #fff; }
+    .opt.correct .opt-text { color: #15803d; font-weight: 600; }
+    .opt.correct { display: none; }
+    .opt-text { color: #374151; }
+
+    /* Meta/stats card */
+    .meta-card {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .meta-card h4 { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; margin-bottom: 8px; }
+    .stat-mini-row { display: flex; gap: 0; }
+    .stat-mini {
+      flex: 1; text-align: center; padding: 6px 4px;
+      border-right: 1px solid #e5e7eb;
+    }
+    .stat-mini:last-child { border-right: none; }
+    .stat-mini .sv { font-size: 1.1rem; font-weight: 800; color: #7c3aed; }
+    .stat-mini .sl { font-size: .63rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* ── Agent Trace ── */
+    .trace-panel {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      overflow: hidden;
+    }
+    .trace-header {
+      padding: 14px 20px; border-bottom: 1px solid #f1f5f9;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .trace-header h2 { font-size: 1rem; font-weight: 700; }
+    .turn-count {
+      margin-left: auto; background: #f3f4f6; color: #6b7280;
+      padding: 3px 10px; border-radius: 999px; font-size: .75rem;
+    }
+    .replay-btn {
+      background: #7c3aed; color: #fff; border: none;
+      padding: 6px 14px; border-radius: 7px; font-size: .78rem; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .replay-btn:hover { background: #6d28d9; }
+
+    .trace-body { padding: 0 0 20px; }
+
+    /* Turn items */
+    .turn {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f8fafc;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .4s ease, transform .4s ease;
+    }
+    .turn.visible { opacity: 1; transform: translateY(0); }
+
+    .turn-header {
+      display: flex; align-items: center; gap: 9px; margin-bottom: 10px;
+    }
+    .turn-icon {
+      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: .95rem;
+    }
+    .ti-user   { background: #ede9fe; }
+    .ti-think  { background: #ede9fe; }
+    .ti-imgq   { background: #dbeafe; }
+    .ti-audq   { background: #fef3c7; }
+    .ti-answer { background: #dcfce7; }
+
+    .turn-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    .tl-user   { color: #7c3aed; }
+    .tl-think  { color: #7c3aed; }
+    .tl-imgq   { color: #1d4ed8; }
+    .tl-audq   { color: #b45309; }
+    .tl-answer { color: #15803d; }
+
+    .turn-num {
+      margin-left: auto; font-size: .68rem; color: #cbd5e1;
+      font-family: monospace;
+    }
+
+    /* Think block */
+    .think-block {
+      background: #faf5ff; border-left: 3px solid #a78bfa;
+      border-radius: 0 8px 8px 0; padding: 12px 14px;
+      font-size: .83rem; color: #4b5563; line-height: 1.65;
+    }
+    .think-block .think-tag {
+      font-family: monospace; color: #7c3aed; font-size: .75rem; font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    /* Tool call block */
+    .tool-call {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 10px 14px; font-family: monospace; font-size: .78rem;
+    }
+    .tool-call .fn-name { font-weight: 700; }
+    .fn-img  { color: #1d4ed8; }
+    .fn-aud  { color: #b45309; }
+    .tool-call .param { color: #374151; }
+    .tool-call .param .pk { color: #6b7280; }
+    .tool-call .param .pv { color: #15803d; }
+
+    /* Retrieved frames grid */
+    .retrieved-label {
+      font-size: .72rem; color: #6b7280; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em;
+      margin: 10px 0 7px;
+    }
+    .frames-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+    .frame-card {
+      background: #0f172a; border-radius: 6px; border: 1px solid #1e293b;
+      aspect-ratio: 16/9; position: relative; overflow: hidden;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: 0;
+    }
+    .frame-card .frame-ts {
+      position: absolute; top: 5px; left: 5px;
+      background: rgba(0,0,0,.7); color: #94a3b8;
+      padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-family: monospace;
+    }
+    .frame-card .frame-score {
+      position: absolute; top: 5px; right: 5px;
+      background: rgba(124,58,237,.7); color: #e9d5ff;
+      padding: 1px 5px; border-radius: 3px; font-size: .6rem; font-family: monospace;
+    }
+    .frame-card .frame-emoji {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-55%);
+      font-size: 1.6rem; opacity: .7;
+    }
+    .frame-card .frame-desc {
+      background: linear-gradient(to top, rgba(0,0,0,.85), transparent);
+      color: #cbd5e1; font-size: .62rem; padding: 10px 5px 4px;
+      line-height: 1.3; text-align: center;
+    }
+    .frame-card.highlight { border-color: #7c3aed; }
+    .frame-card.highlight .frame-score { background: rgba(124,58,237,.9); }
+
+    /* Audio result */
+    .audio-results { display: flex; flex-direction: column; gap: 8px; }
+    .audio-seg {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .audio-seg.highlight { border-color: #f59e0b; }
+    .audio-seg .ats {
+      display: flex; justify-content: space-between; margin-bottom: 6px;
+    }
+    .audio-seg .at-time { font-family: monospace; font-size: .68rem; color: #f59e0b; }
+    .audio-seg .at-score { font-family: monospace; font-size: .65rem; color: #475569; }
+    .audio-wave { font-size: .65rem; color: #475569; letter-spacing: 1px; margin-bottom: 5px; }
+    .audio-transcript { font-size: .79rem; color: #e2e8f0; line-height: 1.55; }
+    .audio-transcript .zh { color: #93c5fd; }
+    .audio-transcript .en { color: #6b7280; font-style: italic; font-size: .74rem; }
+
+    /* Answer block */
+    .answer-block {
+      background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .answer-block .ans-head {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .ans-badge {
+      background: #22c55e; color: #fff; padding: 2px 8px; border-radius: 4px;
+      font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    }
+    .answer-block .evidence-list { display: flex; flex-direction: column; gap: 5px; }
+    .evidence-item {
+      display: flex; gap: 8px; font-size: .8rem; align-items: flex-start;
+    }
+    .ev-tag {
+      flex-shrink: 0; padding: 1px 7px; border-radius: 4px;
+      font-size: .68rem; font-weight: 700;
+    }
+    .ev-vis { background: #dbeafe; color: #1d4ed8; }
+    .ev-aud { background: #fef3c7; color: #b45309; }
+    .ev-text { color: #374151; }
+    .final-choice {
+      margin-top: 12px; padding: 10px 14px;
+      background: #fff; border: 2px solid #22c55e; border-radius: 8px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .fc-key {
+      width: 28px; height: 28px; border-radius: 7px; background: #22c55e;
+      color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .fc-text { font-size: .85rem; color: #15803d; font-weight: 600; }
+
+    /* Progress bar */
+    .progress-bar {
+      height: 3px; background: #e5e7eb;
+      border-radius: 0;
+    }
+    .progress-fill {
+      height: 100%; background: #7c3aed; border-radius: 0;
+      width: 0%; transition: width .4s ease;
+    }
+
+    /* Answer reveal overlay (answer-correct in question panel) */
+    .turn.user-turn { background: #faf5ff; }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ─────────────────────────────────────────────── -->
+<nav>
+  <a class="back" href="index.html">← Home</a>
+  <span class="sep">/</span>
+  <span class="title">OmniRAG-Agent Demo</span>
+  <span class="badge">🎬 Live Case Walkthrough</span>
+</nav>
+
+<!-- ── Layout ───────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+
+    <!-- Video card -->
+    <div class="video-card">
+      <div class="video-player">
+        <div class="badges">
+          <span class="vid-badge">video_1</span>
+          <span class="vid-badge av">A+V</span>
+        </div>
+        <div class="play-btn">▶</div>
+        <span class="vid-name">video_1_t5s.mp4</span>
+      </div>
+      <div class="meta">
+        <div class="meta-row"><span class="k">Dataset</span><span class="v">VideoOmniBench</span></div>
+        <div class="meta-row"><span class="k">Duration</span><span class="v">~4 min (5s segments)</span></div>
+        <div class="meta-row"><span class="k">Audio type</span><span class="v">Speech</span></div>
+        <div class="meta-row"><span class="k">Task type</span><span class="v">Reference Reasoning</span></div>
+      </div>
+    </div>
+
+    <!-- Question card -->
+    <div class="question-card">
+      <div class="qcard-head">
+        <span class="qtype-tag">Reference Reasoning</span>
+      </div>
+      <p class="question-text">Before picking up the kitten, the blogger explains a sign. Which concepts can it be associated with?</p>
+      <div class="options" id="optionsList">
+        <div class="opt" id="optA">
+          <div class="opt-key">A</div>
+          <div class="opt-text">Ancient Chinese stories and Japanese anime</div>
+        </div>
+        <div class="opt" id="optB">
+          <div class="opt-key">B</div>
+          <div class="opt-text">Ancient Chinese Imperial Palace Architecture and Japanese Bar Names</div>
+        </div>
+        <div class="opt" id="optC">
+          <div class="opt-key">C</div>
+          <div class="opt-text">A certain type of Chinese cuisine and a certain type of Southeast Asian opera</div>
+        </div>
+        <div class="opt" id="optD">
+          <div class="opt-key">D</div>
+          <div class="opt-text">Chinese garden art and Western palace architecture</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini stats -->
+    <div class="meta-card">
+      <h4>Session Stats</h4>
+      <div class="stat-mini-row">
+        <div class="stat-mini"><div class="sv" id="statTurns">0</div><div class="sl">Turns</div></div>
+        <div class="stat-mini"><div class="sv" id="statImgQ">0</div><div class="sl">Img Queries</div></div>
+        <div class="stat-mini"><div class="sv" id="statAudQ">0</div><div class="sl">Aud Queries</div></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── Agent Trace Panel ── -->
+  <div class="trace-panel">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="trace-header">
+      <h2>Agent Reasoning Trace</h2>
+      <span class="turn-count" id="turnCount">Turn 0 / 8</span>
+      <button class="replay-btn" onclick="startTrace()">↺ Replay</button>
+    </div>
+    <div class="trace-body" id="traceBody"></div>
+  </div>
+
+</div>
+
+<script>
+const TURNS = [
+  /* ── Turn 1: User ── */
+  {
+    type: 'user',
+    icon: '👤', label: 'User Input', labelClass: 'tl-user', iconClass: 'ti-user',
+    content: () => `
+      <div class="think-block" style="background:#faf5ff;border-left-color:#a78bfa;">
+        <div style="font-size:.78rem;color:#6b7280;margin-bottom:6px;">📎 Attached: <code style="font-size:.75rem;background:#ede9fe;padding:1px 5px;border-radius:3px;color:#7c3aed;">video_1_t5s.mp4</code></div>
+        <div style="font-size:.83rem;color:#374151;">
+          <strong>Question:</strong> Before picking up the kitten, the blogger explains a sign. Which concepts can it be associated with?<br/>
+          <span style="color:#94a3b8;font-size:.77rem;margin-top:4px;display:block;">A / B / C / D — see question panel →</span>
+        </div>
+      </div>`
+  },
+  /* ── Turn 2: Think ── */
+  {
+    type: 'think',
+    icon: '🧠', label: 'Think', labelClass: 'tl-think', iconClass: 'ti-think',
+    content: () => `
+      <div class="think-block">
+        <div class="think-tag">&lt;think&gt;</div>
+        The question asks about a sign the blogger explains <em>before</em> picking up a kitten.
+        I need to:<br/>
+        1. Locate the frame where the kitten is picked up to get the approximate timestamp.<br/>
+        2. Look at what sign was visible and what was said just before that moment.<br/><br/>
+        Let me query video frames for the kitten pickup scene first.
+        <div class="think-tag" style="margin-top:6px;">&lt;/think&gt;</div>
+      </div>
+      <div style="margin-top:8px;">
+        <div class="tool-call">
+          <span class="fn-name fn-img">query_image</span>(<span class="param"><span class="pk">query=</span><span class="pv">"blogger picking up kitten near shop entrance"</span>, <span class="pk">video_id=</span><span class="pv">"video_1"</span>, <span class="pk">top_k=</span><span class="pv">5</span></span>)
+        </div>
+      </div>`
+  },
+  /* ── Turn 3: Image Results ── */
+  {
+    type: 'imgresult',
+    icon: '🖼️', label: 'Image Retrieval', labelClass: 'tl-imgq', iconClass: 'ti-imgq',
+    content: () => `
+      <div class="retrieved-label">Retrieved 5 frame segments · ranked by CLIP similarity</div>
+      <div class="frames-grid">
+        <div class="frame-card highlight">
+          <span class="frame-ts">t=1:38–1:43</span><span class="frame-score">0.089</span>
+          <span class="frame-emoji">🐱</span>
+          <div class="frame-desc">Blogger crouching, reaching toward small kitten near entrance</div>
+        </div>
+        <div class="frame-card highlight">
+          <span class="frame-ts">t=1:33–1:38</span><span class="frame-score">0.104</span>
+          <span class="frame-emoji">🪧</span>
+          <div class="frame-desc">Red wooden sign with gold characters visible at shop front</div>
+        </div>
+        <div class="frame-card">
+          <span class="frame-ts">t=2:01–2:06</span><span class="frame-score">0.218</span>
+          <span class="frame-emoji">😄</span>
+          <div class="frame-desc">Blogger holding kitten, smiling at camera</div>
+        </div>
+        <div class="frame-card">
+          <span class="frame-ts">t=0:52–0:57</span><span class="frame-score">0.341</span>
+          <span class="frame-emoji">🌿</span>
+          <div class="frame-desc">Outdoor garden path, tourists walking</div>
+        </div>
+        <div class="frame-card">
+          <span class="frame-ts">t=3:14–3:19</span><span class="frame-score">0.402</span>
+          <span class="frame-emoji">🏯</span>
+          <div class="frame-desc">Indoor corridor with traditional architecture</div>
+        </div>
+      </div>`
+  },
+  /* ── Turn 4: Think + Audio Query ── */
+  {
+    type: 'think',
+    icon: '🧠', label: 'Think', labelClass: 'tl-think', iconClass: 'ti-think',
+    content: () => `
+      <div class="think-block">
+        <div class="think-tag">&lt;think&gt;</div>
+        Found the kitten at <strong>t=1:38–1:43</strong> and a sign at <strong>t=1:33–1:38</strong> just before.
+        The sign frame is the most relevant — I need to hear what the blogger says at that moment
+        to understand the sign's meaning. Let me query audio around t=1:33–1:43.
+        <div class="think-tag" style="margin-top:6px;">&lt;/think&gt;</div>
+      </div>
+      <div style="margin-top:8px;">
+        <div class="tool-call">
+          <span class="fn-name fn-aud">query_audio</span>(<span class="param"><span class="pk">query=</span><span class="pv">"blogger explaining sign or text before picking up kitten"</span>, <span class="pk">video_id=</span><span class="pv">"video_1"</span>, <span class="pk">top_k=</span><span class="pv">3</span></span>)
+        </div>
+      </div>`
+  },
+  /* ── Turn 5: Audio Results ── */
+  {
+    type: 'audresult',
+    icon: '🔊', label: 'Audio Retrieval', labelClass: 'tl-audq', iconClass: 'ti-audq',
+    content: () => `
+      <div class="retrieved-label">Retrieved 3 audio segments · ranked by ASR embedding similarity</div>
+      <div class="audio-results">
+        <div class="audio-seg highlight">
+          <div class="ats"><span class="at-time">▶ t=1:37–1:42</span><span class="at-score">score: 0.127</span></div>
+          <div class="audio-wave">▁▂▄▆▅▇▆▅▃▂▁▂▄▅▃▁▂▃▅▇▆▄▂▁</div>
+          <div class="audio-transcript">
+            <span class="zh">「这里有一个叫柯南的店，柯南，一个是古代中国故事里有这个名字，还有就是那个日本动漫柯南…」</span><br/>
+            <span class="en">"There's a shop called Ke Nan here. Ke Nan (柯南) — one is a name from ancient Chinese stories, and also from the Japanese anime Conan…"</span>
+          </div>
+        </div>
+        <div class="audio-seg">
+          <div class="ats"><span class="at-time">▶ t=1:32–1:37</span><span class="at-score">score: 0.289</span></div>
+          <div class="audio-wave">▁▂▂▃▃▂▂▁▂▃▄▃▂▁▁▂▃▂▁▁</div>
+          <div class="audio-transcript">
+            <span class="zh">「快看，这边有只小猫咪，好可爱，我们走近看看…」</span><br/>
+            <span class="en">"Look, there's a little kitten over here, so cute, let's get closer…"</span>
+          </div>
+        </div>
+        <div class="audio-seg">
+          <div class="ats"><span class="at-time">▶ t=1:42–1:47</span><span class="at-score">score: 0.341</span></div>
+          <div class="audio-wave">▁▁▂▃▄▃▂▂▁▂▂▃▂▁▁</div>
+          <div class="audio-transcript">
+            <span class="zh">「好小哦，来，让我来抱一下，乖…」</span><br/>
+            <span class="en">"So small, come here, let me hold you, good kitty…"</span>
+          </div>
+        </div>
+      </div>`
+  },
+  /* ── Turn 6: Think + Verify Sign ── */
+  {
+    type: 'think',
+    icon: '🧠', label: 'Think', labelClass: 'tl-think', iconClass: 'ti-think',
+    content: () => `
+      <div class="think-block">
+        <div class="think-tag">&lt;think&gt;</div>
+        Excellent. The top-ranked audio at t=1:37–1:42 is highly informative. The blogger
+        explicitly says <strong>"柯南 — one is from ancient Chinese stories, and also the Japanese anime Conan."</strong><br/><br/>
+        This strongly points to option A. But let me verify by retrieving the sign frame
+        directly to confirm what the sign reads.
+        <div class="think-tag" style="margin-top:6px;">&lt;/think&gt;</div>
+      </div>
+      <div style="margin-top:8px;">
+        <div class="tool-call">
+          <span class="fn-name fn-img">query_image</span>(<span class="param"><span class="pk">query=</span><span class="pv">"shop sign with Chinese characters 柯南 at entrance"</span>, <span class="pk">video_id=</span><span class="pv">"video_1"</span>, <span class="pk">top_k=</span><span class="pv">3</span></span>)
+        </div>
+      </div>`
+  },
+  /* ── Turn 7: Sign Image Results ── */
+  {
+    type: 'imgresult',
+    icon: '🖼️', label: 'Image Retrieval', labelClass: 'tl-imgq', iconClass: 'ti-imgq',
+    content: () => `
+      <div class="retrieved-label">Retrieved 3 frame segments</div>
+      <div class="frames-grid">
+        <div class="frame-card highlight">
+          <span class="frame-ts">t=1:33–1:38</span><span class="frame-score">0.071</span>
+          <span class="frame-emoji">🪧</span>
+          <div class="frame-desc">Red wooden sign — gold "柯南" characters, decorative border</div>
+        </div>
+        <div class="frame-card">
+          <span class="frame-ts">t=1:28–1:33</span><span class="frame-score">0.183</span>
+          <span class="frame-emoji">🏠</span>
+          <div class="frame-desc">Wide shot of shop exterior, traditional style</div>
+        </div>
+        <div class="frame-card">
+          <span class="frame-ts">t=1:38–1:43</span><span class="frame-score">0.205</span>
+          <span class="frame-emoji">🧍</span>
+          <div class="frame-desc">Blogger standing beside sign, reaching toward kitten</div>
+        </div>
+      </div>`
+  },
+  /* ── Turn 8: Final Answer ── */
+  {
+    type: 'answer',
+    icon: '✅', label: 'Final Answer', labelClass: 'tl-answer', iconClass: 'ti-answer',
+    content: () => `
+      <div class="think-block" style="margin-bottom:10px;">
+        <div class="think-tag">&lt;think&gt;</div>
+        I now have conclusive multi-modal evidence:<br/>
+        • <strong>[Visual, t=1:35]</strong> Sign reads "柯南" (Ke Nan / Conan) at shop entrance.<br/>
+        • <strong>[Audio, t=1:39]</strong> Blogger says "柯南 — one is from ancient Chinese stories, and also the Japanese anime Conan."<br/><br/>
+        The other options (palace architecture / bar names, cuisine / opera, garden art) are entirely absent from both the visual and audio evidence. The answer is unambiguously <strong>A</strong>.
+        <div class="think-tag" style="margin-top:6px;">&lt;/think&gt;</div>
+      </div>
+      <div class="answer-block">
+        <div class="ans-head">
+          <span class="ans-badge">✓ Answer</span>
+          <span style="font-size:.8rem;color:#15803d;font-weight:600;">Confidence: High · 3 tool calls · 8 turns</span>
+        </div>
+        <div class="evidence-list">
+          <div class="evidence-item">
+            <span class="ev-tag ev-vis">Vision</span>
+            <span class="ev-text">Sign reading "柯南" visible at t=1:33–1:38 (Seg #37, score 0.071)</span>
+          </div>
+          <div class="evidence-item">
+            <span class="ev-tag ev-aud">Audio</span>
+            <span class="ev-text">Blogger at t=1:39: "柯南，一个是古代中国故事里有这个名字，还有就是那个日本动漫柯南"</span>
+          </div>
+          <div class="evidence-item">
+            <span class="ev-tag ev-vis">Vision</span>
+            <span class="ev-text">Kitten picked up at t=1:38–1:43, confirming sign explanation preceded the action</span>
+          </div>
+        </div>
+        <div class="final-choice">
+          <div class="fc-key">A</div>
+          <div class="fc-text">Ancient Chinese stories and Japanese anime</div>
+        </div>
+      </div>`
+  }
+];
+
+const DELAYS = [300, 1400, 2800, 4400, 5900, 7500, 9100, 10800];
+let timers = [];
+
+function startTrace() {
+  timers.forEach(clearTimeout);
+  timers = [];
+  const body = document.getElementById('traceBody');
+  body.innerHTML = '';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('turnCount').textContent = 'Turn 0 / 8';
+  document.getElementById('statTurns').textContent = '0';
+  document.getElementById('statImgQ').textContent = '0';
+  document.getElementById('statAudQ').textContent = '0';
+  document.getElementById('optA').classList.remove('correct');
+
+  let imgQ = 0, audQ = 0;
+
+  TURNS.forEach((turn, idx) => {
+    timers.push(setTimeout(() => {
+      const div = document.createElement('div');
+      const isBg = turn.type === 'user' ? ' user-turn' : '';
+      div.className = `turn${isBg}`;
+      div.innerHTML = `
+        <div class="turn-header">
+          <div class="turn-icon ${turn.iconClass}">${turn.icon}</div>
+          <span class="turn-label ${turn.labelClass}">${turn.label}</span>
+          <span class="turn-num">Turn ${idx + 1}</span>
+        </div>
+        ${turn.content()}`;
+      body.appendChild(div);
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { div.classList.add('visible'); });
+      });
+
+      if (turn.type === 'imgresult') imgQ++;
+      if (turn.type === 'audresult') audQ++;
+
+      document.getElementById('statTurns').textContent = idx + 1;
+      document.getElementById('statImgQ').textContent = imgQ;
+      document.getElementById('statAudQ').textContent = audQ;
+      document.getElementById('turnCount').textContent = `Turn ${idx + 1} / 8`;
+      document.getElementById('progressFill').style.width = `${((idx + 1) / 8) * 100}%`;
+
+      div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      if (turn.type === 'answer') {
+        setTimeout(() => {
+          document.getElementById('optA').classList.add('correct');
+        }, 600);
+      }
+    }, DELAYS[idx]));
+  });
+}
+
+document.addEventListener('DOMContentLoaded', startTrace);
+</script>
+</body>
+</html>
